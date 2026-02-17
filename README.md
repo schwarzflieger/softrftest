@@ -1,6 +1,8 @@
 # softrftest
 Small test program that activates SoftRF transmit
 
+Attach your XR1 receiver to your host computer over a USB UART dogle
+
 Compile this test program on your host
 ```
 gcc main.c -I./mavlink -o mav_uart
