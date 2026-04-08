@@ -105,20 +105,25 @@ void send_heartbeat(int fd)
     write(fd, buf, mavlink_msg_to_send_buffer(buf, &msg));
 }
 
-void send_system_time(int fd)
+uint64_t get_system_time_usec()
 {
-    mavlink_message_t msg;
-    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
     struct timeval tv;
     gettimeofday(&tv, NULL);
 
     uint64_t time_unix_usec =
         (uint64_t)tv.tv_sec * 1000000ULL + tv.tv_usec;
 
+    return time_unix_usec;
+}
+
+void send_system_time(int fd)
+{
+    mavlink_message_t msg;
+    uint8_t buf[MAVLINK_MAX_PACKET_LEN];
+
     mavlink_msg_system_time_pack(
         SYS_ID, COMP_ID, &msg,
-        time_unix_usec,
+        get_system_time_usec(),
         0
     );
 
@@ -130,6 +135,8 @@ void send_gps_raw(int fd)
     mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
+    // the test coords shall be set closer than ~25-30km to your actual position
+    // otherwise flarm decodere will compute wrong coordinates
     int32_t lat = (int32_t)(45.67 * 1e7);
     int32_t lon = (int32_t)(12.34 * 1e7);
 
@@ -139,15 +146,15 @@ void send_gps_raw(int fd)
         SYS_ID,
         COMP_ID,
         &msg,
-        (uint64_t)time(NULL) * 1000000ULL,  // time_usec
+        get_system_time_usec(),
         3,                                  // fix type (3D fix)
         lat,
         lon,
         alt,
         100,                                // eph (cm)
         100,                                // epv
-        0,                                  // vel
-        0,                                  // cog
+        100,                                  // vel
+        100,                                  // cog
         5                                   // satellites
     );
 
@@ -254,11 +261,20 @@ void parse_message(const mavlink_message_t *msg)
         case MAVLINK_MSG_ID_ADSB_VEHICLE: {
             mavlink_adsb_vehicle_t adsb;
             mavlink_msg_adsb_vehicle_decode(msg, &adsb);
-            printf("[ADSB] ICAO=%06X  lat=%.7f  lon=%.7f  alt=%d\n",
+            printf("ICAO=%06X CALL=%s lat=%.7f lon=%.7f alt=%d head=%d hvel=%d vvel=%d at=%d et=%d squawk=%d\n",
                    adsb.ICAO_address,
+                   adsb.callsign, /*<  The callsign, 8+null*/
                    adsb.lat / 1e7,
                    adsb.lon / 1e7,
-                   adsb.altitude);
+                   adsb.altitude,
+                   adsb.heading, /*< [cdeg] Course over ground*/
+                   adsb.hor_velocity, /*< [cm/s] The horizontal velocity*/
+                   adsb.ver_velocity, /*< [cm/s] The vertical velocity. Positive is up*/
+                   adsb.altitude_type, /*<  ADSB altitude type.*/
+                   adsb.emitter_type, /*<  ADSB emitter type.*/
+                   adsb.squawk/*<  ADSB squawk.*/
+                  );
+            fflush(stdout);
             break;
         }
 
