@@ -1,18 +1,20 @@
 /*
- * MAVLink UART example program (MAVLink v1)
+ * MAVLink UART example program (MAVLink v2/v1)
  *
  * Build:
- *   gcc -I./mavlink_c -o mav_uart mav_uart.c
+ *   gcc -I./mavlink_c -o mav_uart -lm mav_uart.c
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <sys/time.h>
 #include <time.h>
+#include <getopt.h>
 
 #include "mavlink/common/mavlink.h"
 
@@ -20,9 +22,14 @@
 #define COMP_ID  1
 
 #define DEFAULT_COM_PORT  "/dev/ttyUSB0"
-#define DEFAULT_COM_SPEED 57600
+#define DEFAULT_COM_SPEED 115200
+//#define DEFAULT_COM_SPEED 57600
+#define DEFAULT_MAVLINK_VERSION 2
+#define DEFAULT_LAT 45.67 // fake lat
+#define DEFAULT_LON 12.34 // fake lon
 
-
+int32_t g_latitude = 0;
+int32_t g_longitude = 0;
 
 // ------------------------------------------------------------
 // MAP INTEGER BAUD RATE TO termios CONSTANT
@@ -51,14 +58,12 @@ int uart_init(const char *device, int baudrate)
 {
     speed_t br = baud_to_termios(baudrate);
     if (br == 0) {
-        printf("Unsupported baudrate: %d\n", baudrate);
         return -1;
     }
 
     int fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
     if (fd < 0) {
-        perror("open");
-        return -1;
+        return -2;
     }
 
     struct termios config;
@@ -130,15 +135,12 @@ void send_system_time(int fd)
     write(fd, buf, mavlink_msg_to_send_buffer(buf, &msg));
 }
 
+static uint16_t cdeg = 7500;
+
 void send_gps_raw(int fd)
 {
     mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
-
-    // the test coords shall be set closer than ~25-30km to your actual position
-    // otherwise flarm decodere will compute wrong coordinates
-    int32_t lat = (int32_t)(45.67 * 1e7);
-    int32_t lon = (int32_t)(12.34 * 1e7);
 
     int32_t alt = 100 * 1000;   // 100m → millimeters
 
@@ -148,14 +150,20 @@ void send_gps_raw(int fd)
         &msg,
         get_system_time_usec(),
         3,                                  // fix type (3D fix)
-        lat,
-        lon,
+        g_latitude,
+        g_longitude,
         alt,
         100,                                // eph (cm)
         100,                                // epv
-        100,                                  // vel
-        100,                                  // cog
-        5                                   // satellites
+        100,                                // vel
+        cdeg,                               // cog
+        5,                                  // satellites
+        0,                                  // alt_ellipsoid
+        0,                                  // h_acc
+        0,                                  // v_acc
+        0,                                  // vel_acc
+        0,                                  // hdg_acc
+        0                                   // yaw
     );
 
     write(fd, buf, mavlink_msg_to_send_buffer(buf, &msg));
@@ -258,10 +266,14 @@ void parse_message(const mavlink_message_t *msg)
 {
     switch (msg->msgid)
     {
+        case MAVLINK_MSG_ID_HEARTBEAT:
+            break;
         case MAVLINK_MSG_ID_ADSB_VEHICLE: {
             mavlink_adsb_vehicle_t adsb;
             mavlink_msg_adsb_vehicle_decode(msg, &adsb);
-            printf("ICAO=%06X CALL=%s lat=%.7f lon=%.7f alt=%d head=%d hvel=%d vvel=%d at=%d et=%d squawk=%d\n",
+            uint64_t sysTime = get_system_time_usec()/1000; // in ms
+            printf("time=%" PRIu64 " ICAO=%06X CALL=%s lat=%.7f lon=%.7f alt=%d head=%d hvel=%d vvel=%d at=%d et=%d squawk=%d\n",
+                   sysTime,
                    adsb.ICAO_address,
                    adsb.callsign, /*<  The callsign, 8+null*/
                    adsb.lat / 1e7,
@@ -305,50 +317,143 @@ void parse_message(const mavlink_message_t *msg)
     }
 }
 
+void show_usage(char* prog_name)
+{
+    fprintf(stderr, "\nUsage: %s -p PORT [-b BAUD] [-m MAVLINK Version] [--lat LAT --lon LON]\n", prog_name);
+    fprintf(stderr, "Defaults: -b 115200 -m 2 --lat 45.67 --lon 12.34\n");
+}
+
 //-------------------------------------------------------
 // MAIN
 //-------------------------------------------------------
 int main(int argc, char *argv[])
 {
     const char* port = DEFAULT_COM_PORT;
-    int baud = DEFAULT_COM_SPEED;
+    int baudrate = DEFAULT_COM_SPEED;
+    int mavlink_version = DEFAULT_MAVLINK_VERSION;  // optional
+    double lat = DEFAULT_LAT;
+    double lon = DEFAULT_LON;
 
-    if (argc >= 2) port = argv[1];
-    if (argc >= 3) baud = atoi(argv[2]);
+    int opt;
+    static struct option long_options[] = {
+        {"port",     required_argument, 0, 'p'},
+        {"baudrate", required_argument, 0, 'b'},
+        {"mavlink",  required_argument, 0, 'm'},
+        {"lat",      required_argument, 0, 1},
+        {"lon",      required_argument, 0, 2},
+        {0, 0, 0, 0}
+    };
 
-    printf("Using UART: %s  baud: %d\n", port, baud);
+    while ((opt = getopt_long(argc, argv, "p:b:m:", long_options, NULL)) != -1) {
+        switch(opt) {
+            case 'p': port = optarg; break;
+            case 'b': baudrate = atoi(optarg); break;
+            case 'm': mavlink_version = atoi(optarg); break;
+            case 1: lat = atof(optarg); break;
+            case 2: lon = atof(optarg); break;
+            default:
+                show_usage(argv[0]);
+                return 1;
+        }
+    }
 
-    int fd = uart_init(port, baud);
-    if (fd < 0) return 1;
+    if (!port) {
+        fprintf(stderr, "Error: Port is required\n");
+        show_usage(argv[0]);
+        return 1;
+    }
+
+    if (mavlink_version != 1 && mavlink_version != 2) {
+        fprintf(stderr, "Error: Invalid MAVLink version: %d (must be 1 or 2)\n", mavlink_version);
+        show_usage(argv[0]);
+        return 1;
+    }
+
+    int fd = uart_init(port, baudrate);
+    if (fd < 0) {
+        if (fd == -1) {
+          printf("Error: Unsupported baudrate: %d\n", baudrate);
+        }
+        else if (fd == -2) {
+          fprintf(stderr, "Error: Port %s cannot be opened\n", port);
+        }
+        show_usage(argv[0]);
+        return 1;
+    }
+
+    printf("UART Port: %s\n", port);
+    printf("Baud: %d\n", baudrate);
+    printf("MAVLink Version: %d\n", mavlink_version);
+    printf("GPS: %.6f, %.6f\n", lat, lon);
+
+    g_latitude  = (int32_t)(lat * 1e7);
+    g_longitude = (int32_t)(lon * 1e7);
+
+    if (mavlink_version == 1) {
+        mavlink_status_t *status = mavlink_get_channel_status(MAVLINK_COMM_0);
+        status->flags |= MAVLINK_STATUS_FLAG_OUT_MAVLINK1;
+    }
 
     mavlink_message_t msg;
     mavlink_status_t status;
 
-    uint64_t last_1hz = 0;
+    uint64_t next_tick = 0;
 
     while (1) {
-        uint64_t now_ms = (uint64_t)(time(NULL) * 1000ULL);
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t now_ms = ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000ULL;
+
+        // initialize schedule once
+        if (next_tick == 0) {
+            next_tick = ((now_ms / 1000) + 1) * 1000;
+        }
 
         //---- FIXED 1Hz MESSAGES ----
-        if (now_ms - last_1hz >= 1000) {
+        if (now_ms >= next_tick) {
+            send_gps_raw(fd);
             send_heartbeat(fd);
             send_system_time(fd);
-            send_gps_raw(fd);
-            last_1hz = now_ms;
+            next_tick += 1000;
         }
 
         //---- STREAMS ----
         send_stream_extended_status(fd, now_ms);
         send_stream_extra3(fd, now_ms);
 
+#if 0
         //---- RECEIVE ----
         uint8_t c;
-        if (read(fd, &c, 1) > 0) {
+        while (read(fd, &c, 1) > 0) {
             if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
                 parse_message(&msg);
         }
 
-        usleep(1000);
+        // sleep until next second boundary
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t now_after = ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000ULL;
+
+        uint64_t sleep_ms = (next_tick > now_after) ? (next_tick - now_after) : 0;
+        usleep(sleep_ms * 1000);
+#endif
+
+        //---- RECEIVE UNTIL NEXT TICK ----
+        uint64_t now_poll = now_ms;
+        while (now_poll < next_tick) {
+            uint8_t c;
+            ssize_t r = read(fd, &c, 1);
+            if (r > 0) {
+                if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status))
+                    parse_message(&msg);
+            } else {
+                // No data; optional tiny sleep to prevent busy spin
+                usleep(1000); // 1ms
+            }
+
+            // update current time
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            now_poll = ts.tv_sec * 1000ULL + ts.tv_nsec / 1000000ULL;
+        }
     }
 
     close(fd);
