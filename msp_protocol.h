@@ -56,7 +56,7 @@ typedef struct __attribute__((packed)) {
 
 bool msp_parse_char(uint8_t c, msp_message_t *msg);
 uint16_t msp_msg_to_send_buffer(uint8_t *buf, const msp_message_t *msg);
-bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps);
+bool msp_msg_gps_raw_int_request_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps);
 void msp_msg_gps_raw_int_request_encode(msp_message_t* msg);
 void msp_msg_gps_raw_int_response_encode(msp_message_t* msg, const msp_gps_raw_int_t* gpsInfo);
 void msp_msg_adsb_vehicle_encode(msp_message_t* msg, const msp_adsb_vehicle_t* vehicle);

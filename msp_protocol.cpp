@@ -182,7 +182,7 @@ uint16_t msp_msg_to_send_buffer(uint8_t *buf, const msp_message_t *msg)
     return index;
 }
 
-bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps)
+bool msp_msg_gps_raw_int_request_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps)
 {
     if (msg->payload_size < sizeof(msp_gps_raw_int_t)) {
         return false;
