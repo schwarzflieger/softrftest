@@ -182,13 +182,13 @@ uint16_t msp_msg_to_send_buffer(uint8_t *buf, const msp_message_t *msg)
     return index;
 }
 
-bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, mspGpsRawInt_t* gps)
+bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps)
 {
-    if (msg->payload_size < sizeof(mspGpsRawInt_t)) {
+    if (msg->payload_size < sizeof(msp_gps_raw_int_t)) {
         return false;
     }
 
-    memcpy(gps, msg->payload, sizeof(mspGpsRawInt_t));
+    memcpy(gps, msg->payload, sizeof(msp_gps_raw_int_t));
     return true;
 }
 
@@ -201,32 +201,32 @@ void msp_msg_gps_raw_int_request_encode(msp_message_t* msg)
     msg->payload_size = 0u; // request message has no payload
 }
 
-void msp_msg_gps_raw_int_response_encode(msp_message_t* msg, const mspGpsRawInt_t* gpsInfo)
+void msp_msg_gps_raw_int_response_encode(msp_message_t* msg, const msp_gps_raw_int_t* gpsInfo)
 {
     // type '<' = request, '>' = response, '!' = error
     msg->type = '>';
     msg->flags = 0;
     msg->function = MSP2_INAV_GPS_RAW_INT;
-    msg->payload_size = sizeof(mspGpsRawInt_t);
-    memcpy(msg->payload, gpsInfo, sizeof(mspGpsRawInt_t));
+    msg->payload_size = sizeof(msp_gps_raw_int_t);
+    memcpy(msg->payload, gpsInfo, sizeof(msp_gps_raw_int_t));
 }
 
-void msp_msg_adsb_vehicle_encode(msp_message_t* msg, const mspAdsbVehicle_t* vehicle)
+void msp_msg_adsb_vehicle_encode(msp_message_t* msg, const msp_adsb_vehicle_t* vehicle)
 {
     msg->type = '<';
     msg->flags = 1; // no response is needed
     msg->function = MSP2_SENSOR_ADSB;
-    msg->payload_size = sizeof(mspAdsbVehicle_t);
-    memcpy(msg->payload, vehicle, sizeof(mspAdsbVehicle_t));
+    msg->payload_size = sizeof(msp_adsb_vehicle_t);
+    memcpy(msg->payload, vehicle, sizeof(msp_adsb_vehicle_t));
 }
 
-bool msp_msg_adsb_vehicle_decode(const msp_message_t* msg, mspAdsbVehicle_t* vehicle)
+bool msp_msg_adsb_vehicle_decode(const msp_message_t* msg, msp_adsb_vehicle_t* vehicle)
 {
-    if (msg->payload_size < sizeof(mspAdsbVehicle_t)) {
+    if (msg->payload_size < sizeof(msp_adsb_vehicle_t)) {
         return false;
     }
 
-    memcpy(vehicle, msg->payload, sizeof(mspAdsbVehicle_t));
+    memcpy(vehicle, msg->payload, sizeof(msp_adsb_vehicle_t));
     return true;
 }
 

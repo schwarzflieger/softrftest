@@ -111,7 +111,7 @@ void send_gps_raw(int fd)
 
     int32_t alt = 100 * 1000;   // 100m → millimeters
 
-    mspGpsRawInt_t gpsInfo;
+    msp_gps_raw_int_t gpsInfo;
     gpsInfo.time_usec = get_system_time_usec();
     gpsInfo.lat = g_latitude;
     gpsInfo.lon = g_longitude;
@@ -147,7 +147,7 @@ void parse_message(const msp_message_t *msgin, int fd)
             send_gps_raw(fd);
             break;
         case MSP2_SENSOR_ADSB: {
-            mspAdsbVehicle_t adsb;
+            msp_adsb_vehicle_t adsb;
             msp_msg_adsb_vehicle_decode(msgin, &adsb);
             uint64_t sysTime = get_system_time_usec()/1000; // in ms
             printf("time=%" PRIu64 " ICAO=%06X CALL=%s lat=%.7f lon=%.7f alt=%d head=%d hvel=%d vvel=%d at=%d et=%d squawk=%d\n",

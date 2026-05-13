@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) {
   char callsign[9]; /*<  The callsign, 8+null*/
   uint8_t emitter_type; /*<  ADSB emitter type.*/
   uint8_t tslc; /*< [s] Time since last communication in seconds*/
-} mspAdsbVehicle_t;
+} msp_adsb_vehicle_t;
 
 typedef struct __attribute__((packed)) {
   uint64_t time_usec; /*< [us] Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number.*/
@@ -51,14 +51,14 @@ typedef struct __attribute__((packed)) {
   uint32_t vel_acc; /*< [mm] Speed uncertainty.*/
   uint32_t hdg_acc; /*< [degE5] Heading / track uncertainty*/
   uint16_t yaw; /*< [cdeg] Yaw in earth frame from north. Use 0 if this GPS does not provide yaw. Use 65535 if this GPS is configured to provide yaw and is currently unable to provide it. Use 36000 for north.*/
-} mspGpsRawInt_t;
+} msp_gps_raw_int_t;
 
 
 bool msp_parse_char(uint8_t c, msp_message_t *msg);
 uint16_t msp_msg_to_send_buffer(uint8_t *buf, const msp_message_t *msg);
-bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, mspGpsRawInt_t* gps);
+bool msp_msg_gps_raw_int_decode(const msp_message_t* msg, msp_gps_raw_int_t* gps);
 void msp_msg_gps_raw_int_request_encode(msp_message_t* msg);
-void msp_msg_gps_raw_int_response_encode(msp_message_t* msg, const mspGpsRawInt_t* gpsInfo);
-void msp_msg_adsb_vehicle_encode(msp_message_t* msg, const mspAdsbVehicle_t* vehicle);
-bool msp_msg_adsb_vehicle_decode(const msp_message_t* msg, mspAdsbVehicle_t* vehicle);
+void msp_msg_gps_raw_int_response_encode(msp_message_t* msg, const msp_gps_raw_int_t* gpsInfo);
+void msp_msg_adsb_vehicle_encode(msp_message_t* msg, const msp_adsb_vehicle_t* vehicle);
+bool msp_msg_adsb_vehicle_decode(const msp_message_t* msg, msp_adsb_vehicle_t* vehicle);
 
