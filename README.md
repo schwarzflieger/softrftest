@@ -37,11 +37,15 @@ and start it:
 ./msp_uart -p /dev/ttyUSB0 -b 115200 --lat 12.34 --lon 65.78
 ```
 
+Q: Why should I specify latitude and longitude on the command line?
+
 A: It's because the FLARM packets contain relative coordinates, and transmitter and
    receiver should be not so far away from each other. So if you use these test
    programs to receive FLARM then specify your current location on the command line.
    The coords do not need to be exact. Deviations up to ~20km should be OK
+
 Q: Why are the --lat and --lon parameters needed?
+
 A: FLARM packets contain relative coordinates, so the transmitter and receiver must
    not be too far apart. If you use these test programs to receive FLARM data, specify
    your current location on the command line. The coordinates do not need to be
