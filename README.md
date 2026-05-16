@@ -1,5 +1,5 @@
 # softrftest
-Small test program that was originally developed to activates SoftRF transmit
+Small test program that was originally developed to activate SoftRF transmit
 Now it is used to test NoSoftRF firmware
 
 Attach your XR1 receiver to your host computer over a USB UART dogle
