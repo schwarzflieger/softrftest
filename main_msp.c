@@ -24,9 +24,11 @@
 //#define DEFAULT_COM_SPEED 57600
 #define DEFAULT_LAT 45.67 // fake lat
 #define DEFAULT_LON 12.34 // fake lon
+#define DEFAULT_ALT 500.0 // fake alt
 
-int32_t g_latitude = 0;
+int32_t g_latitude  = 0;
 int32_t g_longitude = 0;
+int32_t g_altitude  = 0;
 
 // ------------------------------------------------------------
 // MAP INTEGER BAUD RATE TO termios CONSTANT
@@ -109,13 +111,11 @@ void send_gps_raw(int fd)
     msp_message_t msgout;
     uint8_t buf[MSP_MAX_PAYLOAD];
 
-    int32_t alt = 100 * 1000;   // 100m → millimeters
-
     msp_gps_raw_int_t gpsInfo;
     gpsInfo.time_usec = get_system_time_usec();
     gpsInfo.lat = g_latitude;
     gpsInfo.lon = g_longitude;
-    gpsInfo.alt = alt;
+    gpsInfo.alt = g_altitude;
     gpsInfo.eph = 100;
     gpsInfo.epv = 100;
     gpsInfo.vel = 100;
@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
     int baudrate = DEFAULT_COM_SPEED;
     double lat = DEFAULT_LAT;
     double lon = DEFAULT_LON;
+    double alt = DEFAULT_ALT;
 
     int opt;
     static struct option long_options[] = {
@@ -197,6 +198,7 @@ int main(int argc, char *argv[])
         {"baudrate", required_argument, 0, 'b'},
         {"lat",      required_argument, 0, 1},
         {"lon",      required_argument, 0, 2},
+        {"alt",      required_argument, 0, 3},
         {0, 0, 0, 0}
     };
 
@@ -206,6 +208,7 @@ int main(int argc, char *argv[])
             case 'b': baudrate = atoi(optarg); break;
             case 1: lat = atof(optarg); break;
             case 2: lon = atof(optarg); break;
+            case 3: alt = atof(optarg); break;
             default:
                 show_usage(argv[0]);
                 return 1;
@@ -233,10 +236,11 @@ int main(int argc, char *argv[])
     printf("UART Port: %s\n", port);
     printf("Baud: %d\n", baudrate);
     printf("GPS: %.6f, %.6f\n", lat, lon);
+    printf("ALT: %.0f", alt);
 
     g_latitude  = (int32_t)(lat * 1e7);
     g_longitude = (int32_t)(lon * 1e7);
-
+    g_altitude  = (int32_t)(alt * 1000); // m → millimeters
 
     msp_message_t msg;
 

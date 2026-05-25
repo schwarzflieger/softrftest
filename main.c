@@ -27,9 +27,11 @@
 #define DEFAULT_MAVLINK_VERSION 2
 #define DEFAULT_LAT 45.67 // fake lat
 #define DEFAULT_LON 12.34 // fake lon
+#define DEFAULT_ALT 500.0 // 450 meters MSL
 
-int32_t g_latitude = 0;
+int32_t g_latitude  = 0;
 int32_t g_longitude = 0;
+int32_t g_altitude  = 0;
 
 // ------------------------------------------------------------
 // MAP INTEGER BAUD RATE TO termios CONSTANT
@@ -142,8 +144,6 @@ void send_gps_raw(int fd)
     mavlink_message_t msg;
     uint8_t buf[MAVLINK_MAX_PACKET_LEN];
 
-    int32_t alt = 100 * 1000;   // 100m → millimeters
-
     mavlink_msg_gps_raw_int_pack(
         SYS_ID,
         COMP_ID,
@@ -152,7 +152,7 @@ void send_gps_raw(int fd)
         3,                                  // fix type (3D fix)
         g_latitude,
         g_longitude,
-        alt,
+        g_altitude,
         100,                                // eph (cm)
         100,                                // epv
         100,                                // vel
@@ -333,6 +333,7 @@ int main(int argc, char *argv[])
     int mavlink_version = DEFAULT_MAVLINK_VERSION;  // optional
     double lat = DEFAULT_LAT;
     double lon = DEFAULT_LON;
+    double alt = DEFAULT_ALT;
 
     int opt;
     static struct option long_options[] = {
@@ -341,6 +342,7 @@ int main(int argc, char *argv[])
         {"mavlink",  required_argument, 0, 'm'},
         {"lat",      required_argument, 0, 1},
         {"lon",      required_argument, 0, 2},
+        {"alt",      required_argument, 0, 3},
         {0, 0, 0, 0}
     };
 
@@ -351,6 +353,7 @@ int main(int argc, char *argv[])
             case 'm': mavlink_version = atoi(optarg); break;
             case 1: lat = atof(optarg); break;
             case 2: lon = atof(optarg); break;
+            case 3: alt = atof(optarg); break;
             default:
                 show_usage(argv[0]);
                 return 1;
@@ -385,9 +388,11 @@ int main(int argc, char *argv[])
     printf("Baud: %d\n", baudrate);
     printf("MAVLink Version: %d\n", mavlink_version);
     printf("GPS: %.6f, %.6f\n", lat, lon);
+    printf("ALT: %.0f\n", alt);
 
     g_latitude  = (int32_t)(lat * 1e7);
     g_longitude = (int32_t)(lon * 1e7);
+    g_altitude  = (int32_t)(alt * 1000); // m → millimeters
 
     if (mavlink_version == 1) {
         mavlink_status_t *status = mavlink_get_channel_status(MAVLINK_COMM_0);
